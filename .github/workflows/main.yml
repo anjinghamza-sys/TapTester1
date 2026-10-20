@@ -1,25 +1,62 @@
 
+name: Build Tap Tester APK
+
+'on':
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/main.yml"
+      - "*.zip"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+
       - name: Extract Android project
         shell: bash
         run: |
           mkdir -p source
           ZIP_FILE=$(find . -maxdepth 1 -type f -iname "*.zip" -print -quit)
-
           if [ -z "$ZIP_FILE" ]; then
             echo "File ZIP tidak ditemukan"
             ls -la
             exit 1
           fi
-
-          echo "ZIP ditemukan: $ZIP_FILE"
           unzip -q "$ZIP_FILE" -d source
-
           PROJECT_DIR=$(find source -type f \( -name settings.gradle.kts -o -name settings.gradle \) -print -quit | xargs -r dirname)
-
           if [ -z "$PROJECT_DIR" ]; then
             echo "File proyek Android tidak ditemukan di ZIP"
             find source -maxdepth 4 -type f | head -50
             exit 1
           fi
-
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        run: gradle -p "$PROJECT_DIR" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TapTester-debug-APK
+          path: source/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
