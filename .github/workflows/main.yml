@@ -1,56 +1,8 @@
-
-name: Build Tap Tester APK
-
-on:
-  workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/main.yml"
-      - "*.zip"
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Get repository files
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.9"
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
+
       - name: Install Android SDK packages
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Extract Android project
-        run: |
-          mkdir -p source
-          unzip -q "TapTester-main (1).zip" -d source
-          PROJECT_DIR=$(find source -type f \( -name settings.gradle.kts -o -name settings.gradle \) -print -quit | xargs dirname)
-          if [ -z "$PROJECT_DIR" ] || [ ! -f "$PROJECT_DIR/build.gradle.kts" ] && [ ! -f "$PROJECT_DIR/build.gradle" ]; then
-            echo "Android project files not found in ZIP"
-            exit 1
-          fi
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Build debug APK
-        run: gradle -p "$PROJECT_DIR" assembleDebug
-
-      - name: Save APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: TapTester-debug-APK
-          path: source/**/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
